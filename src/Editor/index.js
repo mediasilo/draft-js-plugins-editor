@@ -37,11 +37,12 @@ class PluginEditor extends Component {
     const plugins = [this.props, ...this.resolvePlugins()];
 
     plugins.forEach(plugin => {
-      if (typeof plugin.initialize !== 'function') continue;
-      plugin.initialize({
-        getEditorState: this.getEditorState,
-        setEditorState: this.onChange,
-      });
+      if (typeof plugin.initialize === 'function') {
+        plugin.initialize({
+          getEditorState: this.getEditorState,
+          setEditorState: this.onChange,
+        });
+      }
     });
 
     // attach proxy methods like `focus` or `blur`
@@ -243,28 +244,29 @@ class PluginEditor extends Component {
     let accessibilityProps = {};
     const plugins = [this.props, ...this.resolvePlugins()];
     plugins.forEach(plugin => {
-      if (typeof plugin.getAccessibilityProps !== 'function') continue;
-      const props = plugin.getAccessibilityProps();
-      const popupProps = {};
+      if (typeof plugin.getAccessibilityProps === 'function') {
+        const props = plugin.getAccessibilityProps();
+        const popupProps = {};
 
-      if (accessibilityProps.ariaHasPopup === undefined) {
-        popupProps.ariaHasPopup = props.ariaHasPopup;
-      } else if (props.ariaHasPopup === 'true') {
-        popupProps.ariaHasPopup = 'true';
+        if (accessibilityProps.ariaHasPopup === undefined) {
+          popupProps.ariaHasPopup = props.ariaHasPopup;
+        } else if (props.ariaHasPopup === 'true') {
+          popupProps.ariaHasPopup = 'true';
+        }
+
+        if (accessibilityProps.ariaExpanded === undefined) {
+          popupProps.ariaExpanded = props.ariaExpanded;
+        } else if (props.ariaExpanded === 'true') {
+          popupProps.ariaExpanded = 'true';
+        }
+
+        accessibilityProps = {
+          ...accessibilityProps,
+          ...props,
+          ...popupProps,
+        };
       }
-
-      if (accessibilityProps.ariaExpanded === undefined) {
-        popupProps.ariaExpanded = props.ariaExpanded;
-      } else if (props.ariaExpanded === 'true') {
-        popupProps.ariaExpanded = 'true';
-      }
-
-      accessibilityProps = {
-        ...accessibilityProps,
-        ...props,
-        ...popupProps,
-      };
-    }
+    });
 
     return accessibilityProps;
   };
