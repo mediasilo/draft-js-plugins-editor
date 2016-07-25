@@ -35,20 +35,21 @@ class PluginEditor extends Component {
     super(props);
 
     const plugins = [this.props, ...this.resolvePlugins()];
-    for (const plugin of plugins) {
+
+    plugins.forEach(plugin => {
       if (typeof plugin.initialize !== 'function') continue;
       plugin.initialize({
         getEditorState: this.getEditorState,
         setEditorState: this.onChange,
       });
-    }
+    });
 
     // attach proxy methods like `focus` or `blur`
-    for (const method of proxies) {
+    plugins.forEach(method => {
       this[method] = (...args) => (
-        this.refs.editor[method](...args)
+          this.refs.editor[method](...args)
       );
-    }
+    });
   }
 
   componentWillMount() {
@@ -94,13 +95,18 @@ class PluginEditor extends Component {
       getEditorState: this.getEditorState,
       setEditorState: this.onChange,
     });
-    for (const plugin of plugins) {
-      if (typeof plugin[methodName] !== 'function') continue;
-      const result = plugin[methodName](...newArgs);
-      if (result === true) return true;
-    }
 
-    return false;
+    let result = false;
+
+    plugins.find(plugin => {
+      if (typeof plugin[methodName] === 'function') {
+        result = plugin[methodName](...newArgs) === true;
+        return true;
+      }
+      return false;
+    });
+
+    return result;
   };
 
   createFnHooks = (methodName, plugins) => (...args) => {
@@ -114,16 +120,19 @@ class PluginEditor extends Component {
     if (methodName === 'blockRendererFn') {
       let block = { props: {} };
       let decorators = [];
-      for (const plugin of plugins) {
-        if (typeof plugin[methodName] !== 'function') continue;
-        const result = plugin[methodName](...newArgs);
-        if (result !== undefined && result !== null) {
-          const { decorators: pluginDecorators, props: pluginProps, ...pluginRest } = result; // eslint-disable-line no-use-before-define
-          const { props, ...rest } = block; // eslint-disable-line no-use-before-define
-          if (pluginDecorators) decorators = [...decorators, ...pluginDecorators];
-          block = { ...rest, ...pluginRest, props: { ...props, ...pluginProps } };
+
+      plugins.forEach(plugin => {
+        if (typeof plugin[methodName] === 'function') {
+          const result = plugin[methodName](...newArgs);
+          if (result !== undefined && result !== null) {
+            const { decorators: pluginDecorators, props: pluginProps, ...pluginRest } = result; // eslint-disable-line no-use-before-define
+            const { props, ...rest } = block; // eslint-disable-line no-use-before-define
+            if (pluginDecorators) decorators = [...decorators, ...pluginDecorators];
+            block = { ...rest, ...pluginRest, props: { ...props, ...pluginProps } };
+          }
         }
-      }
+
+      });
 
       if (block.component) {
         decorators.forEach(decorator => { block.component = decorator(block.component); });
@@ -133,26 +142,34 @@ class PluginEditor extends Component {
       return false;
     } else if (methodName === 'blockStyleFn') {
       let styles;
-      for (const plugin of plugins) {
-        if (typeof plugin[methodName] !== 'function') continue;
-        const result = plugin[methodName](...newArgs);
-        if (result !== undefined) {
-          styles = (styles ? (`${styles} `) : '') + result;
+
+      plugins.forEach(plugin => {
+        if (typeof plugin[methodName] === 'function') {
+          const result = plugin[methodName](...newArgs);
+          if (result !== undefined) {
+            styles = (styles ? (`${styles} `) : '') + result;
+          }
         }
-      }
+      });
 
       return styles || false;
     }
 
-    for (const plugin of plugins) {
-      if (typeof plugin[methodName] !== 'function') continue;
-      const result = plugin[methodName](...newArgs);
-      if (result !== undefined) {
-        return result;
-      }
-    }
+    let result = false;
 
-    return false;
+    plugins.find(plugin => {
+      if (typeof plugin[methodName] === 'function') {
+        const res = plugin[methodName](...newArgs);
+        if (res !== undefined) {
+          result = res;
+          return true;
+        }
+        return false;
+      }
+      return false;
+    });
+
+    return result;
   };
 
   createPluginHooks = () => {
@@ -225,7 +242,7 @@ class PluginEditor extends Component {
   resolveAccessibilityProps = () => {
     let accessibilityProps = {};
     const plugins = [this.props, ...this.resolvePlugins()];
-    for (const plugin of plugins) {
+    plugins.forEach(plugin => {
       if (typeof plugin.getAccessibilityProps !== 'function') continue;
       const props = plugin.getAccessibilityProps();
       const popupProps = {};
